@@ -1,5 +1,8 @@
 # import json
 import os
+
+from keras import Input
+
 # from distutils.dir_util import copy_tree
 # import shutil
 from utils import get_filename_only
@@ -10,31 +13,37 @@ import tensorflow as tf
 
 # from tensorflow.keras import backend as K
 print('TensorFlow version: ', tf.__version__)
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+# gpus = tf.config.list_physical_devices('GPU')
+# tf.config.set_logical_device_configuration(
+#         gpus[0],
+#         [tf.config.LogicalDeviceConfiguration(memory_limit=4000)])
 
 # Set to force CPU
 # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 # if tf.test.gpu_device_name():
-#    print('GPU found')
+#     print('GPU found')
 # else:
-#    print("No GPU found")
+#     print("No GPU found")
 
 dataset_path = '.\\split_dataset\\'
 
 tmp_debug_path = '.\\tmp_debug'
 print('Creating Directory: ' + tmp_debug_path)
 os.makedirs(tmp_debug_path, exist_ok=True)
-
 from keras.preprocessing.image import ImageDataGenerator
 from efficientnet.tfkeras import EfficientNetB0
 # from keras.applications import MobileNetV2
-from keras.models import Sequential
-from keras.layers import Dense, Dropout
+# from keras.models import Sequential
+import tensorflow.keras as keras
+from keras.layers import Dense, Dropout, CuDNNGRU, ConvLSTM2D
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.models import load_model
 
 input_size = 128
-batch_size_num = 32
+batch_size_num = 48
 train_path = os.path.join(dataset_path, 'train')
 val_path = os.path.join(dataset_path, 'val')
 test_path = os.path.join(dataset_path, 'test')
@@ -100,22 +109,32 @@ test_generator = test_datagen.flow_from_directory(
 #     classifier_activation="softmax",
 # )
 
+# efficient_net = EfficientNetB0(
+#     weights='imagenet',
+#     input_shape=(input_size, input_size, 3),
+#     include_top=False,
+#     pooling='max'
+# )
+
+input_layer = Input(shape=(input_size, input_size, 3))
 efficient_net = EfficientNetB0(
     weights='imagenet',
     input_shape=(input_size, input_size, 3),
     include_top=False,
     pooling='max'
-)
+)(input_layer)
+# efficient_net_output = efficient_net.get_layer('max_pool').output
+eno_ext = tf.expand_dims(efficient_net, 0)
+# x = (CuDNNGRU(units=1280))(eno_ext)
+# x = (CuDNNGRU(units=256))(x)
+x = (Dense(units=512, activation='relu'))(efficient_net)
+x = (Dropout(0.7))(x)
+x = (Dense(units=128, activation='relu'))(x)
+# x = (Dropout(0.5))(x)
 
-model = Sequential()
-# model.add(efficient_net)
-model.add(efficient_net)
-model.add(Dense(units=512, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(units=128, activation='relu'))
-model.add(Dense(units=1, activation='sigmoid'))
-model.summary()
+output = (Dense(units=1, activation='sigmoid'))(x)
 
+model = keras.Model(inputs=input_layer, outputs=output)
 # Compile model
 model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
 
@@ -153,7 +172,6 @@ history = model.fit(
 )
 print(history.history)
 
-
 # load the saved model that is considered the best
 best_model = load_model(os.path.join(checkpoint_filepath, 'best_model.h5'))
 
@@ -170,7 +188,6 @@ test_results = pd.DataFrame({
     "Prediction": preds.flatten()
 })
 print(test_results)
-
 
 # Plot results
 import matplotlib.pyplot as plt
@@ -192,7 +209,7 @@ plt.plot(epochs, loss, 'bo', label='Training loss')
 plt.plot(epochs, val_loss, 'b', label='Validation Loss')
 plt.title('Training and Validation Loss')
 plt.legend()
-
+plt.show()
 
 plt.plot(test_results['Prediction'], 'bo', label='Training loss')
 plt.legend()

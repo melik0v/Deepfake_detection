@@ -1,4 +1,3 @@
-import sys
 import os
 import cv2
 import math
@@ -10,22 +9,13 @@ frames_path = '.\\train_sample_frames\\'
 print('Creating Directory: ' + frames_path)
 os.makedirs(frames_path, exist_ok=True)
 
-with open(os.path.join(videos_path, 'List_of_testing_videos.txt')) as file:
-    metadata = []
-    for line in file:
-        if sys.platform == 'linux' or sys.platform == 'linux2' or sys.platform == 'darwin':
-            metadata.append(line.split()[1])
-        elif sys.platform == 'win32':
-            metadata.append(line.split()[1].replace('/', '\\'))
-
-# for filename in os.listdir(videos_path):
 videos = []
 for filename in os.listdir(videos_path):
     if not os.path.isdir(os.path.join(videos_path, filename)):
         continue
 
     print('Creating Directory: ' + os.path.join(frames_path, filename))
-    os.makedirs(os.path.join(frames_path, filename))
+    os.makedirs(os.path.join(frames_path, filename), exist_ok=True)
 
     tmp_path = os.path.join(videos_path, get_filename_only(filename))
     print('Processing Directory: ' + tmp_path)
@@ -72,7 +62,8 @@ for filename in os.listdir(videos_path):
                 # new_filename = '{}-{:03d}.png'.format(tmp_path, count)
                 count = count + 1
                 cv2.imwrite(new_filename, new_frame)
-                break
+                if count == 5:
+                    break
         cap.release()
         print("Done!")
     else:

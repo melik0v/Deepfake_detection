@@ -63,10 +63,10 @@ for filename in os.listdir(base_path):
                     y2 = image.shape[0]
                 print(x1, y1, x2, y2)
                 crop_image = image[y1:y2, x1:x2]
-                try:
-                    result = detector.detect_faces(crop_image)[0]
-                except IndexError:
-                    result = result
+                # try:
+                #     result = detector.detect_faces(crop_image)[0]
+                # except IndexError:
+                #     result = result
 
                 keypoints = result['keypoints']
                 # rotation
